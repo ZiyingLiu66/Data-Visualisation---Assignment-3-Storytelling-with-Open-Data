@@ -1,0 +1,468 @@
+---
+title: "Assignment 3"
+author: "Trystan Liu (3698877)"
+date: "2025/10/28"
+output:
+  revealjs::revealjs_presentation:
+    slide_level: 2
+    transition: slide
+    theme: simple
+    fig_width: 16      # width of plots (inch)
+    fig_height: 8.5    # height of plots (inch)
+    fig_retina: 2      # clarity
+    css: slides.css
+    reveal_options:
+      width: 1920
+      height: 1080
+      margin: 0.04
+---
+
+
+```{r setup, include=FALSE}
+# global code block option
+knitr::opts_chunk$set(
+  echo = FALSE,    # hide all code
+  warning = FALSE, # hide all warning
+  message = FALSE  # hide all message
+)
+# libraries
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(tidyr)
+```
+
+```{r, include=FALSE}
+# set all ggplot font size (larger)
+theme_minimal <- function(...) ggplot2::theme_minimal(base_size = 17, ...)
+```
+
+```{r, include=FALSE}
+# set reference month strings into "Mon YYYY"
+format_refmonth <- function(x) {
+  y <- as.character(x)
+  # case 1: "Sep-25" -> "Sep 2025"
+  i1 <- grepl("^[A-Za-z]{3}-\\d{2}$", y)
+  y[i1] <- sub("^([A-Za-z]{3})-(\\d{2})$", "\\1 20\\2", y[i1])
+  # case 2: "2025-09" -> "Sep 2025"
+  i2 <- grepl("^\\d{4}-\\d{2}$", y)
+  if (any(i2)) {
+    yr <- sub("^(\\d{4})-(\\d{2})$", "\\1", y[i2])
+    mo <- as.integer(sub("^(\\d{4})-(\\d{2})$", "\\2", y[i2]))
+    y[i2] <- paste0(month.abb[mo], " ", yr)
+  }
+  y
+}
+```
+
+## Slide 1 - AU Labour Market — Using ABS (Aug 2025) {.compact .left}
+
+**Audience:**Early-career job seekers in Melbourne (**like me**); University careers staff and tech HR.
+
+**Goal:**Use ABS Labour Force (reference period **Aug 2025**) to assess current opportunities/risks.
+
+**Data source:** Australian Bureau of Statistics (ABS) — *Labour force, Australia: August 2025*.  
+https://www.abs.gov.au/statistics/labour/employment-and-unemployment/labour-force-australia/aug-2025
+
+**Release**: 18 Sep 2025 AEST (ABS).
+
+**Project repo:**https://github.com/ZiyingLiu66/Data-Visualisation---Assignment-3-Storytelling-with-Open-Data.git
+
+
+## Slide 2 - Data & Methodology (Scope & Definitions) {.compact .left}
+
+**Scope**: National monthly Labour Force Survey (ABS). 
+
+**Metrics used:**
+employment-to-population ratio (%, SA), unemployment rate (%, SA), employed persons ('000, SA), underemployment rate (%, SA), monthly hours worked (million hours, SA).
+
+**What is plotted**
+
+1. **Seasonally adjusted (default).** Monthly series only; **trend** lines are **not** plotted. All MoM/YoY comments are based on SA.
+2. **X-axis.** ABS **reference month**, tick every **3 months**, label in **“Mon YYYY”** (e.g., **Sep 2025**) to avoid confusion with day of month.
+
+
+**Revision notes**: ABS uses concurrent seasonal adjustment and demographic re-benchmarking, so the past months can be **revised**; please interpret small monthly changes with caution!
+
+**Integrity & readability**: correlation ≠ causation, avoid interpreting conclusions from short-term waves. Readability in design: clear units, uniform caliber, etc.
+
+
+
+
+## Slide 3 - Plot 1: Employment-to-population ratio
+```{r}
+# data files
+employment_data <- read.csv("Employment-to-population ratio.csv", skip = 1)
+unemployment_data <- read.csv("Unemployment rate.csv", skip = 1)
+
+# pre-prepare the employment data
+employment_clean <- employment_data %>%
+  rename(Date = 1, Trend = 2, Seasonally_Adjusted = 3) %>%
+  mutate(
+    Date = as.character(Date),
+    Seasonally_Adjusted = as.numeric(Seasonally_Adjusted)
+  ) %>%
+  filter(!is.na(Seasonally_Adjusted))
+
+# pre-prepare the unemployment data
+unemployment_clean <- unemployment_data %>%
+  rename(Date = 1, Trend = 2, Seasonally_Adjusted = 3) %>%
+  mutate(
+    Date = as.character(Date),
+    Seasonally_Adjusted = as.numeric(Seasonally_Adjusted)
+  ) %>%
+  filter(!is.na(Seasonally_Adjusted))
+
+# sequence for x-axis labels (every 3 months)
+label_indices <- seq(1, nrow(employment_clean), by = 3)
+
+# Plot 1: Employment-to-population ratio (Seasonally Adjusted)
+ggplot(employment_clean, aes(x = factor(Date, levels = Date), y = Seasonally_Adjusted, group = 1)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_point(color = "blue", size = 1) +
+  labs(
+    title = "Employment-to-Population Ratio (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Seasonally Adjusted (%)",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+    breaks = employment_clean$Date[label_indices],
+    labels = format_refmonth
+    ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Slide 4 - Plot 2: Unemployment-to-population ratio
+```{r}
+# Plot 2: Unemployment-to-population ratio
+ggplot(unemployment_clean, aes(x = factor(Date, levels = Date), y = Seasonally_Adjusted, group = 1)) +
+  geom_line(color = "red", linewidth = 1) +
+  geom_point(color = "red", size = 1) +
+  labs(
+    title = "Unemployment Rate (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Seasonally Adjusted (%)",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+    breaks = unemployment_clean$Date[label_indices],
+    labels = format_refmonth
+    ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Slide 5 - Plot3: Employed Data
+```{r}
+# pre-prepare the employed people data
+employed_data <- read.csv("Employed people.csv", skip = 1)
+employed_clean <- employed_data %>%
+  rename(Date = 1, Trend = 2, Seasonally_Adjusted = 3) %>%
+  mutate(
+    Date = as.character(Date),
+    # Remove commas and convert to numeric
+    Seasonally_Adjusted = as.numeric(gsub(",", "", Seasonally_Adjusted))
+  ) %>%
+  filter(!is.na(Seasonally_Adjusted))
+
+# sequence for x-axis labels (every 3 months)
+label_indices_emp <- seq(1, nrow(employed_clean), by = 3)
+
+# Plot3: Employed Data
+ggplot(employed_clean, aes(x = factor(Date, levels = Date), y = Seasonally_Adjusted, group = 1)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_point(color = "blue", size = 1) +
+  labs(
+    title = "Employed People (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Number of People ('000)",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+  breaks = employed_clean$Date[label_indices_emp],
+  labels = format_refmonth
+) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Slide 6 - Plot4: Employment Rate: By Gender
+```{r}
+# pre-prepare the employment-to-population ratio data
+employment_ratio_data <- read.csv("Employment-to-population ratio, Seasonally adjusted.csv", 
+                                  skip = 1, stringsAsFactors = FALSE)
+
+# column names
+colnames(employment_ratio_data) <- c("Date", "People", "Males", "Females")
+
+# convert data type and clean
+employment_clean <- employment_ratio_data %>%
+  mutate(
+    Date = as.character(Date),
+    People = as.numeric(People),
+    Males = as.numeric(Males),
+    Females = as.numeric(Females)
+  ) %>%
+  filter(!is.na(People) & !is.na(Males) & !is.na(Females))
+
+# convert data from wide to long (for plotting)
+employment_long <- employment_clean %>%
+  pivot_longer(cols = c("People", "Males", "Females"), 
+               names_to = "Category", 
+               values_to = "Percentage")
+
+# sequence for x-axis labels (every 3 months)
+label_indices_ratio <- seq(1, nrow(employment_clean), by = 3)
+
+# Plot4: Employment Rate By Gender
+ggplot(employment_long, aes(x = factor(Date, levels = employment_clean$Date), 
+                           y = Percentage, group = Category, color = Category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1) +
+  labs(
+    title = "Employment-to-Population Ratio (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Percentage (%)",
+    color = "Category",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+    breaks = employment_clean$Date[label_indices_ratio],
+    labels = format_refmonth
+                   ) +
+  scale_color_manual(
+    values = c("People" = "blue", "Males" = "red", "Females" = "green"),
+    labels = c("People" = "Total", "Males" = "Males", "Females" = "Females")
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+## Slide 7 - Plot 5:Underemployment Rate:By Gender 
+```{r}
+# pre-prepare underemployment rate data
+underemployment_data <- read.csv("Underemployment rate, Seasonally adjusted.csv", 
+                                 skip = 1, stringsAsFactors = FALSE)
+colnames(underemployment_data) <- c("Date", "People", "Males", "Females")
+
+# convert data type and clean
+underemployment_clean <- underemployment_data %>%
+  mutate(
+    Date = as.character(Date),
+    People = as.numeric(People),
+    Males = as.numeric(Males),
+    Females = as.numeric(Females)
+  ) %>%
+  filter(!is.na(People) & !is.na(Males) & !is.na(Females))
+
+# reshape data for plotting
+underemployment_long <- underemployment_clean %>%
+  pivot_longer(cols = c("People", "Males", "Females"), 
+               names_to = "Category", 
+               values_to = "Percentage")
+
+# x-axis labels sequence
+label_indices <- seq(1, nrow(underemployment_clean), by = 3)
+
+# Plot 5:Underemployment Rate By Gender
+ggplot(underemployment_long, aes(x = factor(Date, levels = underemployment_clean$Date), 
+                                 y = Percentage, group = Category, color = Category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1) +
+  labs(
+    title = "Underemployment Rate for Male and Female (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Percentage (%)",
+    color = "Category",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+    breaks = underemployment_clean$Date[label_indices],
+    labels = format_refmonth
+    ) +
+  scale_color_manual(
+    values = c("People" = "blue", "Males" = "red", "Females" = "green"),
+    labels = c("People" = "Total", "Males" = "Males", "Females" = "Females")
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+```
+
+## Slide 8 - Plot6: Monthly hours worked in all jobs
+```{r}
+# load data
+hours_data <- read.csv("Monthly hours worked in all jobs.csv", 
+                       skip = 1, stringsAsFactors = FALSE)
+
+# column names
+colnames(hours_data) <- c("Date", "Trend", "Seasonally_Adjusted")
+
+# convert to numeric
+hours_data$Seasonally_Adjusted <- as.numeric(gsub(",", "", hours_data$Seasonally_Adjusted))
+
+# remove rows with NA
+hours_clean <- hours_data[!is.na(hours_data$Seasonally_Adjusted), ]
+
+# sequence for x-axis labels
+label_indices <- seq(1, nrow(hours_clean), by = 3)
+
+# Plot6: Monthly hours worked in all jobs
+ggplot(hours_clean, aes(x = factor(Date, levels = Date), y = Seasonally_Adjusted, group = 1)) +
+  geom_line(color = "purple", linewidth = 1) +
+  geom_point(color = "purple", size = 1) +
+  labs(
+    title = "Monthly Hours Worked in All Jobs (Seasonally Adjusted)",
+    subtitle = "Monthly series; X-axis shows the ABS reference month",
+    x = "Reference month",
+    y = "Hours (millions)",
+    caption = "Source: ABS Labour Force (Aug 2025)"
+  ) +
+  scale_x_discrete(
+    breaks = hours_clean$Date[label_indices],
+    labels = format_refmonth
+    ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+
+
+```{r}
+# metrics (hidden, for slide 9)
+last  <- function(x) tail(x, 1)
+mom_d <- function(x) if (length(x) >= 2) last(x) - x[length(x)-1] else NA
+yoy_d <- function(x) if (length(x) >= 13) last(x) - x[length(x)-12] else NA
+
+# employment to population
+emp_sa <- employment_data |>
+  dplyr::rename(Date = 1, Trend = 2, SA = 3) |>
+  dplyr::mutate(SA = as.numeric(SA)) |>
+  dplyr::filter(!is.na(SA))
+emp_latest <- last(emp_sa$SA); emp_mom <- mom_d(emp_sa$SA); emp_yoy <- yoy_d(emp_sa$SA)
+
+# unemployment
+unemp_sa <- unemployment_data |>
+  dplyr::rename(Date = 1, Trend = 2, SA = 3) |>
+  dplyr::mutate(SA = as.numeric(SA)) |>
+  dplyr::filter(!is.na(SA))
+unemp_latest <- last(unemp_sa$SA); unemp_mom <- mom_d(unemp_sa$SA); unemp_yoy <- yoy_d(unemp_sa$SA)
+
+# employed people ('000)
+emp_size_sa <- employed_data |>
+  dplyr::rename(Date = 1, Trend = 2, SA = 3) |>
+  dplyr::mutate(SA = as.numeric(gsub(",", "", SA))) |>
+  dplyr::filter(!is.na(SA))
+emps_latest <- last(emp_size_sa$SA); emps_mom <- mom_d(emp_size_sa$SA); emps_yoy <- yoy_d(emp_size_sa$SA)
+
+# gender gaps (ppt)
+emp_gender_sa <- employment_ratio_data |>
+  dplyr::mutate(
+    Females = as.numeric(Females),
+    Males   = as.numeric(Males)
+  ) |>
+  dplyr::filter(!is.na(Females) & !is.na(Males))
+gap_emp_latest <- last(emp_gender_sa$Females - emp_gender_sa$Males)
+
+under_sa <- underemployment_data |>
+  dplyr::mutate(
+    Females = as.numeric(Females),
+    Males   = as.numeric(Males)
+  ) |>
+  dplyr::filter(!is.na(Females) & !is.na(Males))
+gap_under_latest <- last(under_sa$Females - under_sa$Males)
+
+# monthly hours (million) + hours per worker
+hours_sa <- hours_data |>
+  dplyr::rename(Date = 1, Trend = 2, SA = 3) |>
+  dplyr::mutate(SA = as.numeric(gsub(",", "", SA))) |>
+  dplyr::filter(!is.na(SA))
+hours_latest <- last(hours_sa$SA); hours_mom <- mom_d(hours_sa$SA); hours_yoy <- yoy_d(hours_sa$SA)
+hpw_latest   <- (hours_latest * 1e6) / (last(emp_size_sa$SA) * 1e3)
+
+fmt  <- function(x, acc = 0.1, suf = "") ifelse(is.na(x), "n/a", paste0(scales::number(x, accuracy = acc), suf))
+fmtS <- function(x, acc = 0.1, suf = "") ifelse(is.na(x), "n/a", paste0(sprintf("%+.1f", x), suf))
+```
+
+
+## Slide 9: Key Insights & Actions {.compact .left}
+
+**Summary (latest month)**
+
+- Employment-to-population: **`r fmt(emp_latest, 0.1, "%")`** (MoM `r fmtS(emp_mom, 0.1, " ppt")`, YoY `r fmtS(emp_yoy, 0.1, " ppt")`)
+- Unemployment: **`r fmt(unemp_latest, 0.1, "%")`** (MoM `r fmtS(unemp_mom, 0.1, " ppt")`, YoY `r fmtS(unemp_yoy, 0.1, " ppt")`)
+- Employed persons: **`r fmt(emps_latest, 1, " '000")`** (MoM `r fmt(emps_mom, 1, " '000")`, YoY `r fmt(emps_yoy, 1, " '000")`)
+- Monthly hours: **`r fmt(hours_latest, 0.1, " million")`** (MoM `r fmtS(hours_mom, 0.1, "m")`, YoY `r fmtS(hours_yoy, 0.1, "m")`)
+- Hours per worker: **`r fmt(hpw_latest, 0.1)`**
+- Gender gaps: Employment **`r fmtS(gap_emp_latest, 0.1, " ppt")`**, Underemployment **`r fmtS(gap_under_latest, 0.1, " ppt")`**
+
+
+**Insights:**
+
+1. **Hiring against the wind:** Overall, the employment rate not increased in the past year, while the unemployment rate has slightly rised, the overall competition has been intensified.
+
+2. **Part-Time Drag:** Workload still increasing, average working hours per person lower than the standard full-time, indicating that part-time/temporary are still common.
+
+3. **Gap, Not Divergence:** There has sight gender difference in employment rates, but the overall trends are almost the same, indicating that there have been no social events that have led to divergent employment curves for men and women.
+
+
+
+
+## Slide 10: Ethics and References {.compact .left}
+
+**Achknowledgement**
+
+We acknowledge the Woi-wurrung and Boon-wurrung language groups of the Kulin Nation as the Traditional Owners of the lands on which we learn and work in Melbourne. We pay our deepest respects to Elders past and present.
+
+We also thank the Australian Bureau of Statistics for providing open, publicly accessible data used in this project — specifically *Labour force, Australia: August 2025*. ABS content is generally available under the Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+
+
+**Ethics & integrity**
+
+1. **Honesty and restraint:** These plots only show "what happened", not "why it happened".
+2. **Transparency and reproducibility:** All figures were generated by me with R. The complete code and data processing steps are publicly available in the shared open source GitHub repository.
+3. **Respect:** The result shows the differences between genders, without making over-judgments. More detailed analysis requires more cautious data and methods.
+
+**References**
+
+- Australian Bureau of Statistics. (2025, September 18). Labour force, Australia: August 2025. https://www.abs.gov.au/statistics/labour/employment-and-unemployment/labour-force-australia/aug-2025
+
